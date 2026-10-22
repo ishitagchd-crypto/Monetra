@@ -11,7 +11,8 @@ import java.util.regex.*;
 public class MonetraServer {
     private static final String DB_URL = env("DB_URL", "jdbc:mysql://localhost:3306/monetra");
     private static final String DB_USER = env("DB_USER", "root");
-    private static final String DB_PASSWORD = env("DB_PASSWORD", "");
+    private static final String DB_PASSWORD = System.getenv("DB_PASSWORD") == null
+        ? "" : System.getenv("DB_PASSWORD");
 
     private static String env(String key, String fallback) {
         String value = System.getenv(key);
@@ -159,7 +160,7 @@ public class MonetraServer {
                     p.setString(2, category);
                     p.setBigDecimal(3, java.math.BigDecimal.valueOf(amount));
                     p.setString(4, description);
-                    p.setDate(5, Date.valueOf(date));
+                   p.setDate(5, java.sql.Date.valueOf(date));
                     p.executeUpdate();
                     try (ResultSet keys = p.getGeneratedKeys()) {
                         long id = keys.next() ? keys.getLong(1) : 0;
