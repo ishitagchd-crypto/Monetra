@@ -1,6 +1,22 @@
+
+# Java compiled files
 *.class
+out/
+build/
+
+# Secrets
 .env
+.env.*
+
+# IDE files
 .vscode/
 .idea/
-.DS_Store
-lib/*.jar
+
+# MySQL Connector/J library source and test files
+lib/mysql-connector-j-*/src/
+lib/mysql-connector-j-*/build/
+lib/mysql-connector-j-*/demo/
+lib/mysql-connector-j-*/generated/
+lib/mysql-connector-j-*/legacy/
+
+# Keep the JDBC driver JAR available locally
