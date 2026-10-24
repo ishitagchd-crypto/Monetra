@@ -29,9 +29,7 @@ function formatDate(d){return new Date(`${d}T12:00:00`).toLocaleDateString('en-I
 function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function openModal(id){$(id).classList.remove('hidden');document.body.style.overflow='hidden';}
 function closeModal(id){$(id).classList.add('hidden');document.body.style.overflow='';}
-function showView(view){document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));[...document.querySelectorAll('.content > section:not(.view-section)')].forEach(s=>s.classList.toggle('hidden',view!=='dashboard'));document.querySelectorAll('.view-section').forEach(s=>s.classList.add('hidden'));if(view!=='dashboard')$(view+'View').classList.remove('hidden');if(view==='transactions')renderTransactions();if(view==='budgets')renderBudgets();if(view==='analytics')renderAnalytics();if(view==='money')renderProjection();$('sidebar').classList.remove('open');window.scrollTo({top:0,behavior:'smooth'});}
-document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
-document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.goto)));
+function showView(view){document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));document.querySelectorAll('.content > section:not(.view-section)').forEach(s=>s.classList.toggle('hidden',view!=='dashboard'));document.querySelectorAll('.view-section').forEach(s=>s.classList.add('hidden'));const target=$(view+'View');if(view!=='dashboard'&&target)target.classList.remove('hidden');if(view==='transactions')renderTransactions();if(view==='budgets')renderBudgets();if(view==='analytics')renderAnalytics();if(view==='money')renderProjection();$('sidebar')?.classList.remove('open');window.scrollTo({top:0,behavior:'smooth'});}document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
 $('menuBtn').addEventListener('click',()=>$('sidebar').classList.toggle('open'));$('refreshBtn').addEventListener('click',loadData);
 $('addTopBtn').addEventListener('click',()=>openModal('transactionModal'));$('addInView').addEventListener('click',()=>openModal('transactionModal'));$('emptyAddBtn').addEventListener('click',()=>openModal('transactionModal'));$('createBudgetBtn').addEventListener('click',()=>openModal('budgetModal'));$('addBudgetBtn').addEventListener('click',()=>openModal('budgetModal'));
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>closeModal(b.dataset.close)));document.querySelectorAll('.modal-backdrop').forEach(b=>b.addEventListener('click',e=>{if(e.target===b)closeModal(b.id)}));document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-backdrop:not(.hidden)').forEach(m=>closeModal(m.id));});
@@ -40,5 +38,40 @@ $('budgetForm').addEventListener('submit',async e=>{e.preventDefault();const pay
 document.body.addEventListener('click',async e=>{const b=e.target.closest('[data-delete]');if(!b)return;if(!confirm('Delete this transaction?'))return;try{if(demoMode)transactions=transactions.filter(t=>String(t.id)!==String(b.dataset.delete));else await api('/api/transactions/'+encodeURIComponent(b.dataset.delete),{method:'DELETE'});renderAll();showNotice(demoMode?'Removed from preview.':'Transaction deleted.');if(!demoMode)await loadData();}catch(err){showNotice(err.message,'error');}});
 $('chartRange').addEventListener('change',renderCharts);$('monthlySave').addEventListener('input',renderProjection);$('saveMonths').addEventListener('change',renderProjection);
 $('searchInput').addEventListener('input',()=>{if(!$('transactionsView').classList.contains('hidden')){$('transactionSearch').value=$('searchInput').value;renderTransactions();}else{showView('transactions');$('transactionSearch').value=$('searchInput').value;renderTransactions();}});
-$('transactionSearch').addEventListener('input',renderTransactions);$('typeFilter').addEventListener('change',renderTransactions);$('categoryFilter').addEventListener('change',renderTransactions);
-loadData();
+$('transactionSearch')?.addEventListener('input', renderTransactions);
+$('typeFilter')?.addEventListener('change', renderTransactions);
+$('categoryFilter')?.addEventListener('change', renderTransactions);loadData();
+$('exportCsvBtn')?.addEventListener('click', () => {
+    if (!transactions.length) {
+        showNotice('No transactions available to export.', 'error');
+        return;
+    }
+
+    const headers = ['Type', 'Amount', 'Category', 'Date', 'Description'];
+    const rows = transactions.map(t => [
+        t.type,
+        t.amount,
+        t.category,
+        t.date,
+        t.description || ''
+    ]);
+
+    const csv = [headers, ...rows]
+        .map(row => row.map(value =>
+            '"' + String(value ?? '').replace(/"/g, '""') + '"'
+        ).join(','))
+        .join('\r\n');
+
+    const blob = new Blob(['\uFEFF' + csv], {
+        type: 'text/csv;charset=utf-8;'
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'monetra-transactions.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+
+    showNotice('Transactions exported successfully.');
+});
