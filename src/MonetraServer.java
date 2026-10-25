@@ -179,6 +179,81 @@ public class MonetraServer {
                 }
                 return;
             }
+            if (path.equals("/api/savings-goals") && method.equals("GET")) {
+    StringBuilder json = new StringBuilder("[");
+    try (Connection c = connect();
+         PreparedStatement p = c.prepareStatement(
+             "SELECT id, name, target_amount, saved_amount, deadline " +
+             "FROM savings_goals ORDER BY deadline ASC");
+         ResultSet r = p.executeQuery()) {
+
+        boolean first = true;
+        while (r.next()) {
+            if (!first) json.append(",");
+            first = false;
+
+            json.append("{")
+                .append("\"id\":").append(r.getInt("id")).append(",")
+                .append("\"name\":\"")
+                .append(r.getString("name")
+                    .replace("\\", "\\\\").replace("\"", "\\\""))
+                .append("\",")
+                .append("\"targetAmount\":").append(r.getBigDecimal("target_amount")).append(",")
+                .append("\"savedAmount\":").append(r.getBigDecimal("saved_amount")).append(",")
+                .append("\"deadline\":\"").append(r.getDate("deadline")).append("\"")
+                .append("}");
+        }
+    } catch (SQLException e) {
+        send(ex, 500, "application/json",
+             "{\"error\":\"Could not load savings goals\"}");
+        return;
+    }
+
+    send(ex, 200, "application/json", json.append("]").toString());
+    return;
+}
+if (path.equals("/api/savings-goals") && method.equals("POST")) {
+    String body = readBody(ex);
+    String name = jsonString(body, "name", "").trim();
+    double target = jsonNumber(body, "targetAmount", -1);
+    double saved = jsonNumber(body, "savedAmount", 0);
+    String deadline = jsonString(body, "deadline", "");
+
+    if (name.isBlank() || name.length() > 100 ||
+        !Double.isFinite(target) || target <= 0 ||
+        !Double.isFinite(saved) || saved < 0 || saved > target ||
+        !deadline.matches("\\d{4}-\\d{2}-\\d{2}")) {
+        send(ex, 400, "application/json",
+             "{\"error\":\"Enter valid goal details\"}");
+        return;
+    }
+
+    try {
+        java.time.LocalDate.parse(deadline);
+
+        try (Connection c = connect();
+             PreparedStatement p = c.prepareStatement(
+                 "INSERT INTO savings_goals " +
+                 "(name, target_amount, saved_amount, deadline) " +
+                 "VALUES (?, ?, ?, ?)")) {
+            p.setString(1, name);
+            p.setDouble(2, target);
+            p.setDouble(3, saved);
+            p.setString(4, deadline);
+            p.executeUpdate();
+        }
+
+        send(ex, 201, "application/json", "{\"ok\":true}");
+    } catch (java.time.DateTimeException e) {
+        send(ex, 400, "application/json",
+             "{\"error\":\"Enter a valid deadline date\"}");
+    } catch (SQLException e) {
+        send(ex, 500, "application/json",
+             "{\"error\":\"Could not save savings goal\"}");
+    }
+
+    return;
+}
             if (path.equals("/api/budgets") && method.equals("GET")) {
                 send(ex, 200, "application/json", budgetsJson());
                 return;

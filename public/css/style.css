@@ -3,3 +3,275 @@
 @media(max-width:1200px){.content{padding:28px 24px}.topbar{padding:0 24px}.sidebar{width:220px}.main-area{margin-left:220px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-grid{grid-template-columns:minmax(0,1.3fr) minmax(260px,1fr)}.bottom-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:900px){.sidebar{transform:translateX(-100%);transition:transform .22s;width:245px;box-shadow:15px 0 40px #12213b20}.sidebar.open{transform:translateX(0)}.main-area{margin-left:0}.mobile-menu{display:block}.topbar{gap:12px}.search-wrap{width:auto;flex:1}.top-status{display:none}.dashboard-grid,.lower-grid,.bottom-grid,.money-grid{grid-template-columns:1fr}.chart-wrap{height:250px}.donut-wrap{height:190px}.afterlife-card{min-height:210px}}
 @media(max-width:560px){.topbar{height:62px;padding:0 14px}.content{padding:23px 14px 15px}.page-heading{align-items:flex-start;flex-direction:column}.page-heading h1{font-size:26px}.page-heading .button{width:100%}.metric-grid{gap:10px}.metric-card{padding:15px}.metric-value{font-size:22px;margin:13px 0 8px}.metric-foot{font-size:9px}.metric-icon{width:29px;height:29px}.panel{padding:16px;border-radius:15px}.panel-heading h2{font-size:14px}.panel-heading select{max-width:120px}.chart-wrap{height:220px}.legend-list{gap:9px}.filter-row{flex-wrap:wrap}.filter-row input{flex-basis:100%}.filter-row select{flex:1}.budget-cards{grid-template-columns:1fr}.section-title{align-items:flex-start;flex-direction:column}.section-title .button{width:100%}.footer{flex-direction:column;line-height:1.6}.form-two{grid-template-columns:1fr}.modal{padding:25px 20px}.afterlife-copy h2{font-size:20px}.afterlife-art{width:35%;opacity:.35}.insight-card{padding:18px}.top-actions{gap:6px}.avatar-top{width:30px;height:30px}}
+
+
+/* ===== MONETRA MONEY LEAK DETECTOR ===== */
+
+.money-leak-panel {
+    margin-top: 16px;
+}
+
+.money-leak-panel #moneyLeakResults {
+    margin-top: 20px;
+}
+
+.money-leak-card {
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.money-leak-card h3 {
+    display: none;
+}
+
+.money-leak-subtitle {
+    margin: 0 0 22px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.money-leak-list {
+    display: grid;
+    gap: 20px;
+}
+
+.money-leak-item {
+    padding: 0 0 18px;
+    border-bottom: 1px solid var(--line);
+}
+
+.money-leak-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.money-leak-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 10px;
+    color: var(--ink);
+    font-size: 13px;
+}
+
+.money-leak-heading strong:last-child {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.money-leak-track {
+    width: 100%;
+    height: 9px;
+    overflow: hidden;
+    background: #e9eff3;
+    border-radius: 20px;
+}
+
+.money-leak-bar {
+    height: 100%;
+    min-width: 3px;
+    background: linear-gradient(90deg, #159a70, #48d6a4);
+    border-radius: 20px;
+    transition: width 0.6s ease;
+}
+
+.money-leak-item p {
+    margin: 9px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.money-leak-note {
+    margin-top: 22px;
+    padding: 13px 15px;
+    background: #f4f8f7;
+    border-radius: 12px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.money-leak-empty {
+    padding: 18px 0;
+}
+
+.money-leak-empty h3 {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--ink);
+}
+
+.money-leak-empty p {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+@media (max-width: 600px) {
+    .money-leak-heading {
+        font-size: 12px;
+    }
+
+    .money-leak-list {
+        gap: 16px;
+    }
+
+    .money-leak-note {
+        padding: 12px;
+    }
+}
+
+
+/* ======================================
+   MONETRA - SMART SAVING RECOMMENDATIONS
+   ====================================== */
+
+.saving-recommendations-panel {
+    margin-top: 18px;
+}
+
+.saving-recommendations-panel #savingRecommendations {
+    margin-top: 22px;
+}
+
+.saving-summary {
+    padding: 22px 24px;
+    margin-bottom: 22px;
+    border: 1px solid #d8f1e7;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #effbf6, #f8fffc);
+}
+
+.saving-eyebrow {
+    display: block;
+    margin-bottom: 10px;
+    color: #16815f;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+}
+
+.saving-summary h3 {
+    margin: 0 0 10px;
+    color: #116b50;
+    font-size: 30px;
+    font-weight: 750;
+    letter-spacing: -0.8px;
+}
+
+.saving-summary p {
+    max-width: 620px;
+    margin: 0;
+    color: #648276;
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.saving-recommendation-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.saving-recommendation {
+    min-width: 0;
+    padding: 19px;
+    border: 1px solid var(--line);
+    border-radius: 15px;
+    background: #fff;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.saving-recommendation:hover {
+    border-color: #9cdec5;
+    transform: translateY(-2px);
+}
+
+.saving-recommendation-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 17px;
+}
+
+.saving-category {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 11px;
+    border-radius: 9px;
+    background: #edf9f3;
+    color: #167b5b;
+    font-size: 13px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.saving-recommendation-top p {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.6;
+}
+
+.saving-rate {
+    flex-shrink: 0;
+    padding: 6px 9px;
+    border-radius: 20px;
+    background: #f0f6f4;
+    color: #16815f;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.saving-message {
+    margin: 0;
+    padding-top: 14px;
+    border-top: 1px solid #edf1f3;
+    color: var(--ink);
+    font-size: 12px;
+    line-height: 1.8;
+}
+
+.saving-empty {
+    padding: 22px;
+    border: 1px dashed var(--line);
+    border-radius: 14px;
+    background: #fafcfd;
+}
+
+.saving-empty h3 {
+    margin: 0 0 8px;
+    color: var(--ink);
+    font-size: 16px;
+}
+
+.saving-empty p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+@media (max-width: 700px) {
+    .saving-recommendation-list {
+        grid-template-columns: 1fr;
+    }
+
+    .saving-summary {
+        padding: 18px;
+    }
+
+    .saving-summary h3 {
+        font-size: 26px;
+    }
+
+    .saving-recommendation {
+        padding: 16px;
+    }
+}
