@@ -8,6 +8,14 @@ build/
 .env
 .env.*
 
+# Local database
+monetra.db
+monetra.db-wal
+monetra.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
 # IDE files
 .vscode/
 .idea/

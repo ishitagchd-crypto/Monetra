@@ -9,7 +9,8 @@ import java.util.*;
 import java.util.regex.*;
 
 public class MonetraServer {
-    private static final String DB_URL = env("DB_URL", "jdbc:mysql://localhost:3306/monetra");
+    private static final String DB_URL = env("DB_URL", "jdbc:sqlite:monetra.db");
+    private static final boolean SQLITE = DB_URL.startsWith("jdbc:sqlite:");
     private static final String DB_USER = env("DB_USER", "root");
     private static final String DB_PASSWORD = System.getenv("DB_PASSWORD") == null
         ? "" : System.getenv("DB_PASSWORD");
@@ -20,14 +21,27 @@ public class MonetraServer {
     }
 
     private static Connection connect() throws SQLException {
-        return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+        Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+        if (SQLITE) {
+            try (Statement s = connection.createStatement()) {
+                s.execute("PRAGMA busy_timeout=5000");
+            }
+        }
+        return connection;
     }
 
     private static void initDatabase() throws SQLException {
         try (Connection c = connect(); Statement s = c.createStatement()) {
+            if (SQLITE) s.execute("PRAGMA journal_mode=WAL");
+            String id = SQLITE
+                ? "INTEGER PRIMARY KEY AUTOINCREMENT"
+                : "BIGINT PRIMARY KEY AUTO_INCREMENT";
+            String uniqueBudget = SQLITE
+                ? "UNIQUE (category, month_key)"
+                : "UNIQUE KEY unique_budget (category, month_key)";
             s.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS transactions (
-                    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                    id %s,
                     type VARCHAR(10) NOT NULL,
                     category VARCHAR(60) NOT NULL,
                     amount DECIMAL(12,2) NOT NULL,
@@ -35,16 +49,26 @@ public class MonetraServer {
                     transaction_date DATE NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """);
+            """.formatted(id));
             s.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS budgets (
-                    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                    id %s,
                     category VARCHAR(60) NOT NULL,
                     monthly_limit DECIMAL(12,2) NOT NULL,
                     month_key CHAR(7) NOT NULL,
-                    UNIQUE KEY unique_budget (category, month_key)
+                    %s
                 )
-            """);
+            """.formatted(id, uniqueBudget));
+            s.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS savings_goals (
+                    id %s,
+                    name VARCHAR(100) NOT NULL,
+                    target_amount DECIMAL(12,2) NOT NULL,
+                    saved_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+                    deadline DATE NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """.formatted(id));
         }
     }
 
@@ -179,81 +203,62 @@ public class MonetraServer {
                 }
                 return;
             }
+            if (path.matches("/api/budgets/\\d+") && method.equals("DELETE")) {
+                long id = Long.parseLong(path.substring(path.lastIndexOf('/') + 1));
+                try (Connection c = connect(); PreparedStatement p = c.prepareStatement("DELETE FROM budgets WHERE id=?")) {
+                    p.setLong(1, id);
+                    int changed = p.executeUpdate();
+                    send(ex, changed == 1 ? 200 : 404, "application/json",
+                        changed == 1 ? "{\"ok\":true}" : "{\"error\":\"Budget not found.\"}");
+                }
+                return;
+            }
             if (path.equals("/api/savings-goals") && method.equals("GET")) {
-    StringBuilder json = new StringBuilder("[");
-    try (Connection c = connect();
-         PreparedStatement p = c.prepareStatement(
-             "SELECT id, name, target_amount, saved_amount, deadline " +
-             "FROM savings_goals ORDER BY deadline ASC");
-         ResultSet r = p.executeQuery()) {
-
-        boolean first = true;
-        while (r.next()) {
-            if (!first) json.append(",");
-            first = false;
-
-            json.append("{")
-                .append("\"id\":").append(r.getInt("id")).append(",")
-                .append("\"name\":\"")
-                .append(r.getString("name")
-                    .replace("\\", "\\\\").replace("\"", "\\\""))
-                .append("\",")
-                .append("\"targetAmount\":").append(r.getBigDecimal("target_amount")).append(",")
-                .append("\"savedAmount\":").append(r.getBigDecimal("saved_amount")).append(",")
-                .append("\"deadline\":\"").append(r.getDate("deadline")).append("\"")
-                .append("}");
-        }
-    } catch (SQLException e) {
-        send(ex, 500, "application/json",
-             "{\"error\":\"Could not load savings goals\"}");
-        return;
-    }
-
-    send(ex, 200, "application/json", json.append("]").toString());
-    return;
-}
-if (path.equals("/api/savings-goals") && method.equals("POST")) {
-    String body = readBody(ex);
-    String name = jsonString(body, "name", "").trim();
-    double target = jsonNumber(body, "targetAmount", -1);
-    double saved = jsonNumber(body, "savedAmount", 0);
-    String deadline = jsonString(body, "deadline", "");
-
-    if (name.isBlank() || name.length() > 100 ||
-        !Double.isFinite(target) || target <= 0 ||
-        !Double.isFinite(saved) || saved < 0 || saved > target ||
-        !deadline.matches("\\d{4}-\\d{2}-\\d{2}")) {
-        send(ex, 400, "application/json",
-             "{\"error\":\"Enter valid goal details\"}");
-        return;
-    }
-
-    try {
-        java.time.LocalDate.parse(deadline);
-
-        try (Connection c = connect();
-             PreparedStatement p = c.prepareStatement(
-                 "INSERT INTO savings_goals " +
-                 "(name, target_amount, saved_amount, deadline) " +
-                 "VALUES (?, ?, ?, ?)")) {
-            p.setString(1, name);
-            p.setDouble(2, target);
-            p.setDouble(3, saved);
-            p.setString(4, deadline);
-            p.executeUpdate();
-        }
-
-        send(ex, 201, "application/json", "{\"ok\":true}");
-    } catch (java.time.DateTimeException e) {
-        send(ex, 400, "application/json",
-             "{\"error\":\"Enter a valid deadline date\"}");
-    } catch (SQLException e) {
-        send(ex, 500, "application/json",
-             "{\"error\":\"Could not save savings goal\"}");
-    }
-
-    return;
-}
+                StringBuilder out = new StringBuilder("[");
+                try (Connection c = connect(); PreparedStatement p = c.prepareStatement(
+                        "SELECT id,name,target_amount,saved_amount,deadline FROM savings_goals ORDER BY deadline,id");
+                     ResultSet r = p.executeQuery()) {
+                    boolean first = true;
+                    while (r.next()) {
+                        if (!first) out.append(",");
+                        first = false;
+                        out.append("{\"id\":").append(r.getLong("id"))
+                            .append(",\"name\":").append(quote(r.getString("name")))
+                            .append(",\"targetAmount\":").append(r.getBigDecimal("target_amount").toPlainString())
+                            .append(",\"savedAmount\":").append(r.getBigDecimal("saved_amount").toPlainString())
+                            .append(",\"deadline\":").append(quote(r.getDate("deadline").toString()))
+                            .append("}");
+                    }
+                }
+                send(ex, 200, "application/json", out.append("]").toString());
+                return;
+            }
+            if (path.equals("/api/savings-goals") && method.equals("POST")) {
+                String body = readBody(ex);
+                String name = jsonString(body, "name", "").trim();
+                double target = jsonNumber(body, "targetAmount", -1);
+                double saved = jsonNumber(body, "savedAmount", 0);
+                LocalDate deadline;
+                try { deadline = LocalDate.parse(jsonString(body, "deadline", "")); }
+                catch (Exception e) { deadline = null; }
+                if (name.isBlank() || name.length() > 100 ||
+                    !Double.isFinite(target) || target <= 0 || target > 9999999999.99 ||
+                    !Double.isFinite(saved) || saved < 0 || saved > target ||
+                    deadline == null) {
+                    send(ex, 400, "application/json", "{\"error\":\"Enter valid goal details.\"}");
+                    return;
+                }
+                try (Connection c = connect(); PreparedStatement p = c.prepareStatement(
+                        "INSERT INTO savings_goals(name,target_amount,saved_amount,deadline) VALUES(?,?,?,?)")) {
+                    p.setString(1, name);
+                    p.setBigDecimal(2, java.math.BigDecimal.valueOf(target));
+                    p.setBigDecimal(3, java.math.BigDecimal.valueOf(saved));
+                    p.setDate(4, java.sql.Date.valueOf(deadline));
+                    p.executeUpdate();
+                }
+                send(ex, 201, "application/json", "{\"ok\":true}");
+                return;
+            }
             if (path.equals("/api/budgets") && method.equals("GET")) {
                 send(ex, 200, "application/json", budgetsJson());
                 return;
@@ -269,8 +274,11 @@ if (path.equals("/api/savings-goals") && method.equals("POST")) {
                     return;
                 }
                 try (Connection c = connect(); PreparedStatement p = c.prepareStatement(
-                    "INSERT INTO budgets(category,monthly_limit,month_key) VALUES(?,?,?) " +
-                    "ON DUPLICATE KEY UPDATE monthly_limit=VALUES(monthly_limit)")) {
+                    SQLITE
+                        ? "INSERT INTO budgets(category,monthly_limit,month_key) VALUES(?,?,?) " +
+                          "ON CONFLICT(category, month_key) DO UPDATE SET monthly_limit=excluded.monthly_limit"
+                        : "INSERT INTO budgets(category,monthly_limit,month_key) VALUES(?,?,?) " +
+                          "ON DUPLICATE KEY UPDATE monthly_limit=VALUES(monthly_limit)")) {
                     p.setString(1, category);
                     p.setBigDecimal(2, java.math.BigDecimal.valueOf(limit));
                     p.setString(3, month);
@@ -316,7 +324,7 @@ if (path.equals("/api/savings-goals") && method.equals("POST")) {
     }
 
     public static void main(String[] args) throws Exception {
-        Class.forName("com.mysql.cj.jdbc.Driver");
+        Class.forName(SQLITE ? "org.sqlite.JDBC" : "com.mysql.cj.jdbc.Driver");
         initDatabase();
         int port = Integer.parseInt(env("PORT", "8080"));
         HttpServer server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);

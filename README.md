@@ -1,24 +1,21 @@
-# Monetra — Personal Finance Management & Analytics
+# Monetra — Personal Finance Dashboard
 
-**Make every rupee count.**
-
-Monetra is a responsive personal finance website built with **Core Java**, Java's built-in HTTP server, JDBC, MySQL, HTML, CSS and JavaScript. It uses a premium, calm interface designed around clarity and approachable financial insights.
+A small personal finance app built with Java's built-in HTTP server, JDBC, HTML/CSS, and plain JavaScript. It tracks transactions and budgets, shows monthly charts, and calculates a few savings projections.
 
 ## Features
 
-- Finance dashboard with income, expenses, net balance and savings rate
+- Dashboard with income, expenses, net balance, and savings rate
 - Add and delete transactions
-- Category spending breakdown and cash-flow charts
-- Monthly category budgets and progress indicators
-- Financial insights and a future savings projection
-- Responsive desktop and mobile layout
-- Preview mode in the frontend when the Java API is unavailable
+- Cash-flow chart and expense breakdown by category
+- Monthly category budgets with progress
+- Insights: average expense, largest category, budget health, and monthly trends
+- Spending breakdown with suggested 10% reductions
+- Savings simulator and savings goals
 
 ## Technology
 
 - Java 21
-- MySQL Community Server
-- MySQL Connector/J
+- SQLite by default; MySQL optional
 - HTML, CSS, JavaScript
 - Chart.js (CDN)
 
@@ -26,81 +23,72 @@ Monetra is a responsive personal finance website built with **Core Java**, Java'
 
 ```text
 Monetra/
-├── src/
-│   └── MonetraServer.java
+├── src/MonetraServer.java
 ├── public/
 │   ├── index.html
 │   ├── css/style.css
-│   └── js/app.js
+│   └── js/
+│       ├── app.js
+│       └── spending.js
 ├── lib/
-│   └── mysql-connector-j.jar
+│   ├── sqlite-jdbc-3.53.4.0/
+│   └── mysql-connector-j-26.7.0/
+├── START-MacOS.command
+├── START-Linux.sh
+├── START-Windows.bat
 ├── Dockerfile
+├── .gitattributes
 ├── .gitignore
 └── README.md
 ```
 
-## Local setup (Windows + VS Code)
+## Open it
 
-1. Install JDK 21 and MySQL Server.
-2. Create the database in MySQL Workbench:
+Double-click the launcher for your system. It compiles the server if needed, starts it, and opens http://localhost:8080 in your browser.
 
-   ```sql
-   CREATE DATABASE monetra;
-   ```
+| System | File |
+| --- | --- |
+| macOS | `START-MacOS.command` |
+| Windows | `START-Windows.bat` |
+| Linux | `START-Linux.sh` |
 
-3. Download MySQL Connector/J from https://dev.mysql.com/downloads/connector/j/
-4. Put the downloaded JAR in `lib/` and rename it to `mysql-connector-j.jar`.
-5. In the VS Code terminal at the project root, set your database settings:
+Keep the terminal window open while the app is running — closing it stops the server. If Monetra is already running, the launcher just opens the browser.
 
-   ```powershell
-   $env:DB_URL="jdbc:mysql://localhost:3306/monetra"
-   $env:DB_USER="root"
-   $env:DB_PASSWORD="YOUR_LOCAL_MYSQL_PASSWORD"
-   ```
+Each launcher is standalone, so you can rename it to anything you like without breaking it (keep the file extension: `.command` on macOS, `.bat` on Windows, `.sh` on Linux).
 
-6. Compile and run:
+On Linux you may need to mark the script executable once: `chmod +x START-Linux.sh`, then run `./START-Linux.sh`.
 
-   ```powershell
-   javac --add-modules jdk.httpserver -cp "lib\mysql-connector-j.jar" src\MonetraServer.java
-   java --add-modules jdk.httpserver -cp "src;lib\mysql-connector-j.jar" MonetraServer
-   ```
+Java 21 or newer is required. The launchers look for a JDK; if only a JRE is installed and the project has not been compiled yet, they will tell you to install one.
 
-7. Open http://localhost:8080
+## Run manually
 
-The app creates the `transactions` and `budgets` tables automatically. Never commit passwords or `.env` files to GitHub.
-
-## GitHub
-
-Create a public repository named `monetra-personal-finance`. From the project root:
-
-```powershell
-git init
-git add .
-git commit -m "Build Monetra finance dashboard"
-git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/monetra-personal-finance.git
-git push -u origin main
+```bash
+javac --add-modules jdk.httpserver -d out src/MonetraServer.java
+java --add-modules jdk.httpserver \
+  -cp "out:lib/sqlite-jdbc-3.53.4.0/sqlite-jdbc-3.53.4.0.jar" \
+  MonetraServer
 ```
 
-Replace `YOUR-USERNAME` with your GitHub username. Keep the MySQL JDBC JAR out of GitHub if your repository policy disallows binary files; place it in the build environment or add it as a deployment build dependency.
+Open http://localhost:8080. The app creates `monetra.db` next to the project and the `transactions`, `budgets`, and `savings_goals` tables on first start. On Windows, use `;` instead of `:` in the classpath.
 
-## Deployment with Railway
+To use MySQL instead, include the MySQL driver and set the environment variables:
 
-1. Push the project to GitHub.
-2. Create a Railway project and add a MySQL service.
-3. Add a Java app service from the GitHub repository or deploy using the included Dockerfile.
-4. Ensure the MySQL JDBC driver is available at `lib/mysql-connector-j.jar` during the image build. The current Dockerfile expects this file to exist; update the build to fetch the official driver or provide it through a secure build process.
-5. Configure these variables in the Java service using the values from your Railway MySQL service:
+```bash
+export DB_URL="jdbc:mysql://localhost:3306/monetra"
+export DB_USER="root"
+export DB_PASSWORD="your-password"
 
-   - `PORT` (Railway provides this)
-   - `DB_URL` (JDBC URL for the provisioned MySQL service)
-   - `DB_USER`
-   - `DB_PASSWORD`
+java --add-modules jdk.httpserver \
+  -cp "out:lib/sqlite-jdbc-3.53.4.0/sqlite-jdbc-3.53.4.0.jar:lib/mysql-connector-j-26.7.0/mysql-connector-j-26.7.0.jar" \
+  MonetraServer
+```
 
-   The `DB_URL` must use the JDBC format, for example `jdbc:mysql://HOST:PORT/monetra`, with the host and port supplied by your database provider.
+The MySQL database itself must exist (`CREATE DATABASE monetra;`); the tables are created automatically.
 
-6. Generate a public domain in Railway and test the deployed website.
+## Deployment
 
-## Security and project scope
+The included Dockerfile runs the SQLite version. On Railway or any host with an ephemeral filesystem, mount a persistent volume for `/app/monetra.db` or the data resets on redeploy. For multiple users or a managed database, set `DB_URL` to MySQL and configure `DB_USER` / `DB_PASSWORD`.
 
-This is an educational project starter, not a production-ready financial service. It currently has no login/authentication or per-user authorization. Do not deploy it with real personal or financial data until authentication, access control, HTTPS, request protection and production-grade error handling have been implemented and tested. Use fictional sample data for public demonstrations.
+## Scope
+
+This is an educational project. It has no login or per-user authorization, so everyone who can reach the site shares the same data. Do not store real financial data in a public deployment until accounts, `user_id` scoping, HTTPS, and production error handling are in place.
